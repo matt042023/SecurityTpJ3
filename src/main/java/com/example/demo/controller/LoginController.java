@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
@@ -19,12 +20,14 @@ public class LoginController {
     JwtService jwtService;
     @Autowired
     UserAppRepository userAppRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserApp userApp) throws Exception {
         Optional<UserApp> userAppOptional = userAppRepository.findByUsername(userApp.getUsername());
-        if (userAppOptional.isPresent() && userAppOptional.get().getPassword().equals(userApp.getPassword())) {
-            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, jwtService.createAuthenticationToken(userApp).toString()).body("connected");
+        if (userAppOptional.isPresent() && passwordEncoder.matches(userApp.getPassword(), userAppOptional.get().getPassword())) {
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, jwtService.createAuthenticationToken(userAppOptional.get()).toString()).body("connected");
         }
         throw new Exception();
     }
@@ -37,7 +40,8 @@ public class LoginController {
             userAppRepository.save(
                     new UserApp(
                             userApp.getUsername(),
-                            userApp.getPassword()
+                            passwordEncoder.encode(userApp.getPassword()),
+                            userApp.getRole() != null ? userApp.getRole() : "USER"
                     )
             );
         }else{
