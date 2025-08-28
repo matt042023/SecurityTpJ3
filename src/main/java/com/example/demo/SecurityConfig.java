@@ -28,13 +28,29 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(frameOptionsConfig -> frameOptionsConfig.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/hello/public").permitAll()
-                        .requestMatchers("/auth/login").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/auth/register").permitAll()
-                        .requestMatchers("/jobs/*/admin").hasRole("ADMIN")
+                        // Pages système (erreurs, etc.)
+                        .requestMatchers("/error/**", "/error").permitAll()
+                        
+                        // Ressources statiques
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                        
+                        // Pages web publiques
+                        .requestMatchers("/", "/login", "/register", "/web-register").permitAll()
+                        .requestMatchers("/job/**").permitAll()  // Pages détail offres publiques
+                        
+                        // API REST publiques  
+                        .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
+                        .requestMatchers("/jobs").permitAll()  // Liste des jobs
+                        .requestMatchers("/jobs/{id:[\\d+]}").permitAll()  // Détail job spécifique
+                        
+                        // Endpoints admin spécifiques (AVANT les règles générales)
+                        .requestMatchers("/jobs/{id:[\\d+]}/admin").hasRole("ADMIN")
                         .requestMatchers("/hello/private-admin").hasRole("ADMIN")
-                        .requestMatchers("/jobs", "/jobs/*").permitAll()
+                        
+                        // Autres endpoints publics
+                        .requestMatchers("/h2-console/**", "/hello/public").permitAll()
+                        
+                        // Tout le reste nécessite une authentification
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtService, UsernamePasswordAuthenticationFilter.class)

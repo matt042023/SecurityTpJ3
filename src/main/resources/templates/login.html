@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Board - Connexion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-briefcase me-2"></i>Job Board
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" th:href="@{/}">
+                    <i class="fas fa-arrow-left me-1"></i>Retour à l'accueil
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-sign-in-alt me-2"></i>Connexion
+                        </h4>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <!-- Messages flash -->
+                        <div th:if="${success}" class="alert alert-success" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span th:text="${success}"></span>
+                        </div>
+                        
+                        <div th:if="${error}" class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span th:text="${error}"></span>
+                        </div>
+
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Nom d'utilisateur
+                                </label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-1"></i>Mot de passe
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <p class="mb-0">Pas encore de compte ?</p>
+                            <a th:href="@{/register}" class="btn btn-outline-primary">
+                                <i class="fas fa-user-plus me-1"></i>Créer un compte
+                            </a>
+                        </div>
+
+                        <!-- Comptes de test -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6 class="text-center mb-3">
+                                <i class="fas fa-info-circle me-1"></i>Comptes de test
+                            </h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="fillLogin('john', 'password123')">
+                                        <i class="fas fa-user me-1"></i>john (USER)
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="fillLogin('marie', 'password123')">
+                                        <i class="fas fa-user me-1"></i>marie (USER)
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button type="button" class="btn btn-outline-warning btn-sm w-100 mb-2" onclick="fillLogin('admin', 'admin123')">
+                                        <i class="fas fa-user-shield me-1"></i>admin (ADMIN)
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="fillLogin('paul', 'password123')">
+                                        <i class="fas fa-user me-1"></i>paul (USER)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function fillLogin(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    alert('Erreur de connexion. Vérifiez vos identifiants.');
+                }
+            } catch (error) {
+                alert('Erreur lors de la connexion.');
+                console.error('Erreur:', error);
+            }
+        });
+    </script>
+</body>
+</html>

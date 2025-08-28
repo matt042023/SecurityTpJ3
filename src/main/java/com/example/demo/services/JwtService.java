@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -53,14 +54,19 @@ public class JwtService extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Si c'est une requête de déconnexion, ne pas traiter le JWT
+        if (request.getRequestURI().equals("/logout") || request.getRequestURI().equals("/api/logout")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (request.getCookies() != null) {
             Stream.of(request.getCookies())
-                    .filter(cookie ->
-                            cookie.getName().equals(COOKIE_NAME))
-                                .map(Cookie::getValue)
+                    .filter(cookie -> cookie.getName().equals(COOKIE_NAME))
+                    .map(Cookie::getValue)
+                    .filter(token -> token != null && !token.trim().isEmpty()) // Vérifier que le token n'est pas vide
                     .forEach(token -> {
                         try {
-
                             Claims claims = Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token).getBody();
 
                             Optional<UserApp> optUserApp = userAppRepository.findByUsername(claims.getSubject());
@@ -72,19 +78,22 @@ public class JwtService extends OncePerRequestFilter {
                             if (validateToken(token, userApp)) {
                                 String role = claims.get("role", String.class);
                                 Collection<SimpleGrantedAuthority> authorities = Collections.singletonList(
-                                    new SimpleGrantedAuthority("ROLE_" + role)
+                                        new SimpleGrantedAuthority("ROLE_" + role)
                                 );
-                                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+                                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                                         userApp, null, authorities);
-                                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+                                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                                SecurityContextHolder.getContext().setAuthentication(authToken);
                             }
                         } catch (Exception e) {
-                            // Remove the cookie
-                            Cookie expiredCookie = new Cookie(COOKIE_NAME, null);
-                            expiredCookie.setPath("/");
-                            expiredCookie.setHttpOnly(true);
-                            expiredCookie.setMaxAge(0); // Set the cookie's max age to 0 to delete it
-                            response.addCookie(expiredCookie);
+                            // Token invalide ou expiré, supprimer le cookie
+                            SecurityContextHolder.clearContext();
+                            ResponseCookie expiredCookie = ResponseCookie.from(COOKIE_NAME, "")
+                                    .httpOnly(true)
+                                    .path("/")
+                                    .maxAge(0)
+                                    .build();
+                            response.addHeader(HttpHeaders.SET_COOKIE, expiredCookie.toString());
                         }
                     });
         }
@@ -92,14 +101,25 @@ public class JwtService extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    // Améliorer la validation du token
     public static Boolean validateToken(String token, UserApp userApp) {
         try {
-            Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token).getBody();
-        }catch (Exception e){
+            Claims claims = Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token).getBody();
+
+            // Vérifier que le token n'est pas expiré
+            if (claims.getExpiration().before(new Date())) {
+                return false;
+            }
+
+            // Vérifier que l'utilisateur correspond
+            if (!claims.getSubject().equals(userApp.getUsername())) {
+                return false;
+            }
+
+            return true;
+        } catch (Exception e) {
             return false;
         }
-        return true;
-
     }
 
     public static String generateToken(UserApp userApp) {
